@@ -1,42 +1,32 @@
 import numpy as np
-import math
-from math import pi
 import kreis
 import csv
-#import matplotlib.pyplot as plt
-import os
-
-
-
-#def plot():
-
-   # data = np.loadtxt('Koordinaten.csv', delimiter=',')
-   # print(data)
-   # plt.plot(data[:, 0], data[:, 1])
-   # plt.show()
-
+from enum import Enum
 
 
 # diese Methode liest den NC-Code aus einer .txt datei
-def dateiLesen():
-    text = open("NC_Code.txt")
-    #text = open("test.txt")
-    nc = text.readlines()
-    text.close()
-    os.remove('Koordinaten.csv')
-    return nc
+def dateiLesen(nc_code_file):
+    with open(nc_code_file) as nc_code:
+        #text = open("test.txt")
+        lines = nc_code.readlines()
+    #
+    return lines
 
-def dateiSchreiben(liste):
-    with open('Koordinaten.csv', 'a', newline='') as csvFile:
+def create_coordinates_file(coordinates_file):
+    with open(coordinates_file, 'w') as csvFile:
+        pass
+
+def dateiSchreiben(coordinates_file, liste):
+    with open(coordinates_file, 'a', newline='') as csvFile:
         writer = csv.writer(csvFile)
         writer.writerows(liste)
     csvFile.close()
 
-def dateiSchreibenString(String):
-        with open('Koordinaten.csv', 'a') as csvFile:
-            writer = csvFile.write(String + "\n")
-        csvFile.close()
 
+def dateiSchreibenString(coordinates_file, String):
+    with open(coordinates_file, 'a') as csvFile:
+        csvFile.write(String + "\n")
+    csvFile.close()
 
 # diese Hilfsmethode verarbeitet die .txt datei indem es Backspaces aus den Zeilen entfehrnt
 def split(liste):
@@ -54,7 +44,6 @@ def lBewegung(liste, anfangsPunkt, drehzahl, schneiden, v):
     x = None
     y = None
     z = None
-
 
     for wort in liste:
         if wort == "FMAX":
@@ -76,8 +65,8 @@ def lBewegung(liste, anfangsPunkt, drehzahl, schneiden, v):
     if z is None:
         z = float(anfangsPunkt[2])
     if m_91:
-        anfangsPunkt[2] = anfangsPunkt[2]+1000
-        z = float(z)+1000
+        anfangsPunkt[2] = anfangsPunkt[2] + 1000
+        z = float(z) + 1000
 
     endPunkt = np.array([float(x), float(y), float(z)])
     vektorListe = []
@@ -173,7 +162,7 @@ def initWerkstueck(liste):
 def toolCall(liste):
     drehzahl = 0
     schneiden = [2, 2]
-    durchmesser = [5,2]     #[5,2]
+    durchmesser = [5, 2]
     print(liste[3])
     for stelle in liste:
         if stelle.find("S") == 0:
@@ -181,8 +170,14 @@ def toolCall(liste):
     return [int(drehzahl), schneiden[int(liste[3]) - 1], durchmesser[int(liste[3]) - 1]]
 
 
+class MovementCommands(Enum):
+    INIT = "1"
+    LINE = "L"
+    CIRCLE_CENTER = "CC"
+    CIRCLE = "C"
+    TOOLCALL = "TOOL"
 
-def main():
+def calculate_coordinates(nc_code_file, coordinates_file):
     nullpunkt = np.array([0, 0, 100])
     v = 0
     drehzahl = 0
@@ -190,33 +185,44 @@ def main():
     anfangsPunkt = np.array([-500, -420, 100])
     kreisMitte = np.array([0, 0, 0])
 
-    for line in dateiLesen():
+    create_coordinates_file(coordinates_file)
+
+    for line in dateiLesen(nc_code_file):
 
         zeile = split(line)
 
-        if zeile[0] == "1":
+        if zeile[0] == MovementCommands.INIT.value:
             initWerkstueck(zeile)
-        if zeile[1] == "L":
+
+        if zeile[1] == MovementCommands.LINE.value:
             bewegungen = lBewegung(zeile, anfangsPunkt, drehzahl, schneiden, v)
             vektorList = bewegungen[0]
-            dateiSchreiben(vektorList)
+            dateiSchreiben(coordinates_file, vektorList)
             anfangsPunkt = bewegungen[1]
             v = bewegungen[2]
-        if zeile[1] == "CC":
+
+        if zeile[1] == MovementCommands.CIRCLE_CENTER.value:
             kreisMitte = kreisMittelpunkt(zeile, anfangsPunkt)
-        if zeile[1] == "C":
+
+        if zeile[1] == MovementCommands.CIRCLE.value:
             f_z = float(v) / (drehzahl * schneiden)
             kreis_Weg = kreisBewegung(zeile, anfangsPunkt, kreisMitte, f_z)
-            anfangsPunkt = kreis_Weg[len(kreis_Weg)-1]
-            dateiSchreiben(kreis_Weg)
-        if zeile[1] == "TOOL":
+            anfangsPunkt = kreis_Weg[len(kreis_Weg) - 1]
+            dateiSchreiben(coordinates_file, kreis_Weg)
+
+        if zeile[1] == MovementCommands.TOOLCALL.value:
             array = toolCall(zeile)
             print(array)
             drehzahl = array[0]
             schneiden = array[1]
             toolcall = "Tool Durchmesser " + str(array[2])
-            dateiSchreibenString(toolcall)
+            dateiSchreibenString(coordinates_file, toolcall)
 
 
-main()
-#plot()
+def main():
+    pass
+
+
+if __name__ == '__main__':
+    main()
+
