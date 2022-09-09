@@ -204,7 +204,7 @@ def transform_point_to_coordinate(res, origin, x_coordinate, y_coordinate, heigh
 
 
 @jit(nopython=True)
-def calculate_Vertices(point_width, point_depth, resolution, origin_work_piece, heightfield):
+def calculate_vertices(point_width, point_depth, resolution, origin_work_piece, heightfield):
     vertices_ground = []
     vertices_ceiling = []
     for x in range(int(point_width)):
