@@ -28,26 +28,24 @@ def get_parameter():
         next(myfile)
         head = [next(myfile) for x in range(2)]
 
-    liste = split_nc_code_into_commands(head[0]), split_nc_code_into_commands(head[1])
-    koordinaten = []
-    for eintrag in liste:
+    nc_command_list = split_nc_code_into_commands(head[0]), split_nc_code_into_commands(head[1])
+    coordinates = []
+    for eintrag in nc_command_list:
         x = eintrag[-3].strip("X")
         y = eintrag[-2].strip("Y")
         z = eintrag[-1].strip("Z")
-        koordinaten.append(np.array([float(x), float(y), float(z)]))
+        coordinates.append(np.array([float(x), float(y), float(z)]))
 
-    dimension = koordinaten[1] - koordinaten[0]
-    origin_werk = koordinaten[0]
-    origin_werk[2] = origin_werk[2] - dimension[2]
+    dimension = coordinates[1] - coordinates[0]
+    origin_work_piece = coordinates[0]
+    origin_work_piece[2] = origin_work_piece[2] - dimension[2]
     cell_count = [int(dimension[0]) / resolution[0], int(dimension[1]) / resolution[1]]
 
-    return [resolution, dimension, origin_werk, cell_count]
+    return [resolution, dimension, origin_work_piece, cell_count]
 
 
-def init_Heightfield(resolution, dimension, origin_werk, cell_count):
+def init_heightfield(dimension, cell_count):
     heightfield = dimension[2] * np.ones([int(cell_count[1]), int(cell_count[0])])
-    # vertices = berechne_Vertices(cell_count[0], cell_count[1], resolution, origin_werk, heightfield)
-    # render(vertices)
     return heightfield
 
 
@@ -67,33 +65,33 @@ def render(vertices):
 
 
 @jit(nopython=True)
-def definiere_impliziten_Kreis(heightfield, center_koo, radius, resolution, origin):
+def define_implicit_circle(heightfield, circle_center, radius, resolution, origin_work_piece):
     # mittelpunkt ist ein Punkt im Hoehenfeld
-    mittelpunkt = transform_coordinates_to_point(resolution, origin, center_koo[0], center_koo[1])
+    center_point = transform_coordinates_to_point(resolution, origin_work_piece, circle_center[0], circle_center[1])
 
     # markierte_reichweite ist der Radius im Hoehenfeld
-    markierte_reichweite = int(radius / resolution[1])
+    radius_steps = int(radius / resolution[1])
 
-    eckpunkt_oben = [mittelpunkt[0] + markierte_reichweite, mittelpunkt[1] + markierte_reichweite]
-    eckpunkt_unten = [mittelpunkt[0] - markierte_reichweite, mittelpunkt[1] - markierte_reichweite]
+    top_corner = [center_point[0] + radius_steps, center_point[1] + radius_steps]
+    bottom_corner = [center_point[0] - radius_steps, center_point[1] - radius_steps]
 
-    for x in range(eckpunkt_unten[0], eckpunkt_oben[0] + 1):
-        for y in range(eckpunkt_unten[1], eckpunkt_oben[1] + 1):
+    for x in range(bottom_corner[0], top_corner[0] + 1):
+        for y in range(bottom_corner[1], top_corner[1] + 1):
             if x > len(heightfield[0]) - 1 or y > len(heightfield) - 1 or x < 0 or y < 0:
                 continue
             else:
-                endpunkt = np.array(wo_ist_Punkt(resolution, origin, x, y, center_koo[2]))
-                vektor = endpunkt - center_koo
-                vektor_laenge = np.linalg.norm(vektor)
+                destination = np.array(transform_point_to_coordinate(resolution, origin_work_piece, x, y, circle_center[2]))
+                distance_vector_from_circle_center_to_destination = destination - circle_center
+                circle_center_to_destination_distance = np.linalg.norm(distance_vector_from_circle_center_to_destination)
 
-                if vektor_laenge <= radius:
+                if circle_center_to_destination_distance <= radius:
 
-                    if heightfield[y][x] + origin[2] > center_koo[2]:
-                        heightfield[y][x] = center_koo[2] - origin[2]
+                    if heightfield[y][x] + origin_work_piece[2] > circle_center[2]:
+                        heightfield[y][x] = circle_center[2] - origin_work_piece[2]
     return heightfield
 
 
-def bearbeite_Werkstueck(coordinates_file):
+def process_work_piece(coordinates_file):
     diameter = 0
     center_all = read_file(coordinates_file)
     material = 0
@@ -117,13 +115,13 @@ def bearbeite_Werkstueck(coordinates_file):
         if event in (None, 'Cancel'):  # if user closes window or clicks cancel
             break
         if values[0] == 'Anfang':
-            zustand = 1
+            state = 1
 
         if values[0] == 'Mitte':
-            zustand = len(center_all) // 4
+            state = len(center_all) // 4
 
         if values[0] == 'Ende':
-            zustand = len(center_all)
+            state = len(center_all)
 
         if values[1] == 'Ja':
             plot = True
@@ -146,20 +144,20 @@ def bearbeite_Werkstueck(coordinates_file):
 
     window.close()
 
-    center_all = center_all[:zustand]
+    center_all = center_all[:state]
     parameter = get_parameter()
     resolution = parameter[0]
     dimension = parameter[1]
-    origin = parameter[2]
+    origin_work_piece = parameter[2]
     cell_count = parameter[3]
-    heightfield = init_Heightfield(resolution, dimension, origin, cell_count)
+    heightfield = init_heightfield(dimension, cell_count)
 
-    kreis_für_kraftmethode = milling_force_diagram.definiere_kreis(diameter)
+    force_calculation_circle = milling_force_diagram.init_circle(diameter)
     forces = []
     for current_center in center_all:
         if current_center[0] == "T":
             diameter = current_center[-2]
-            kreis_für_kraftmethode = milling_force_diagram.definiere_kreis(diameter)
+            force_calculation_circle = milling_force_diagram.init_circle(diameter)
             continue
 
         current_center = np.array(current_center.split(","))
@@ -167,15 +165,15 @@ def bearbeite_Werkstueck(coordinates_file):
 
         radius = float(diameter) / 2
 
-        force = milling_force_diagram.calculate_force(current_center, kreis_für_kraftmethode, heightfield, resolution, origin, dimension, material, mc)
+        force = milling_force_diagram.calculate_force(current_center, force_calculation_circle, heightfield, resolution, origin_work_piece, dimension, material, mc)
         forces.append(force)
 
-        heightfield = definiere_impliziten_Kreis(heightfield, current_center, radius, resolution, origin)
+        heightfield = define_implicit_circle(heightfield, current_center, radius, resolution, origin_work_piece)
 
     print("Heightfield fertig")
 
     print("Berechne Vertices")
-    vertices = berechne_Vertices(cell_count[0], cell_count[1], resolution, origin, heightfield)
+    vertices = calculate_Vertices(cell_count[0], cell_count[1], resolution, origin_work_piece, heightfield)
 
     print("Berechne Triangles")
     vertices_triangles = [np.array(vertices_horizontal_triangle(vertices, resolution, dimension)),
@@ -191,38 +189,38 @@ def bearbeite_Werkstueck(coordinates_file):
 
 
 @jit(nopython=True)
-def transform_coordinates_to_point(res, origin, kooX, kooY):
-    x = int((kooX - origin[0]) / res[0])
-    y = int((kooY - origin[1]) / res[1])
+def transform_coordinates_to_point(res, origin, x_coordinate, y_coordinate):
+    x = int((x_coordinate - origin[0]) / res[0])
+    y = int((y_coordinate - origin[1]) / res[1])
     return [x, y]
 
 
 # Punkt zu Koordinate
 @jit(nopython=True)
-def wo_ist_Punkt(res, origin, kooX, kooY, hoehe):
-    x = origin[0] + kooX * res[0]
-    y = origin[1] + kooY * res[1]
-    return [x, y, hoehe]
+def transform_point_to_coordinate(res, origin, x_coordinate, y_coordinate, height):
+    x = origin[0] + x_coordinate * res[0]
+    y = origin[1] + y_coordinate * res[1]
+    return [x, y, height]
 
 
 @jit(nopython=True)
-def berechne_Vertices(punkte_breite, punkte_tiefe, resolution, origin, heightfield):
-    vertices_boden = []
-    vertices_decke = []
-    for x in range(int(punkte_breite)):
-        for y in range(int(punkte_tiefe)):
-            vektor = wo_ist_Punkt(resolution, origin, x, y, origin[2])
-            vertices_boden.append(vektor)
-            vertices_decke.append([vektor[0], vektor[1], heightfield[y][x] + origin[2]])
+def calculate_Vertices(point_width, point_depth, resolution, origin_work_piece, heightfield):
+    vertices_ground = []
+    vertices_ceiling = []
+    for x in range(int(point_width)):
+        for y in range(int(point_depth)):
+            coordinate_vector = transform_point_to_coordinate(resolution, origin_work_piece, x, y, origin_work_piece[2])
+            vertices_ground.append(coordinate_vector)
+            vertices_ceiling.append([coordinate_vector[0], coordinate_vector[1], heightfield[y][x] + origin_work_piece[2]])
 
-    return [np.array(vertices_boden), np.array(vertices_decke)]
+    return [np.array(vertices_ground), np.array(vertices_ceiling)]
 
 
 
 # @jit(nopython = True)
 def vertices_vertical_triangle(vertices, heightfield, resolution, dimension):
-    boden = vertices[0][0][2]
-    origin = get_parameter()[2]
+    ground = vertices[0][0][2]
+    origin_work_piece = get_parameter()[2]
 
     vertices_vertical = []
 
@@ -231,50 +229,50 @@ def vertices_vertical_triangle(vertices, heightfield, resolution, dimension):
             continue
 
         else:
-            # Seite vorne
-            position = transform_coordinates_to_point(resolution, origin, kooX=vertex[0], kooY=vertex[1])
+            # front
+            position = transform_coordinates_to_point(resolution, origin_work_piece, x_coordinate=vertex[0], y_coordinate=vertex[1])
 
             if position[1] == 0 or heightfield[position[1]][position[0]] > heightfield[position[1] - 1][position[0]]:
-                vertices_vertical.append([vertex[0], vertex[1], boden])
+                vertices_vertical.append([vertex[0], vertex[1], ground])
                 vertices_vertical.append([vertex[0] + resolution[0], vertex[1], vertex[2]])
                 vertices_vertical.append([vertex[0], vertex[1], vertex[2]])
 
-                vertices_vertical.append([vertex[0], vertex[1], boden])
+                vertices_vertical.append([vertex[0], vertex[1], ground])
                 vertices_vertical.append([vertex[0] + resolution[0], vertex[1], vertex[2]])
-                vertices_vertical.append([vertex[0] + resolution[0], vertex[1], boden])
+                vertices_vertical.append([vertex[0] + resolution[0], vertex[1], ground])
 
-            # Seite links
+            # left side
             if position[0] == 0 or heightfield[position[1]][position[0]] > heightfield[position[1]][position[0] - 1]:
-                vertices_vertical.append([vertex[0], vertex[1], boden])
+                vertices_vertical.append([vertex[0], vertex[1], ground])
                 vertices_vertical.append([vertex[0], vertex[1] + resolution[1], vertex[2]])
                 vertices_vertical.append([vertex[0], vertex[1], vertex[2]])
 
-                vertices_vertical.append([vertex[0], vertex[1], boden])
+                vertices_vertical.append([vertex[0], vertex[1], ground])
                 vertices_vertical.append([vertex[0], vertex[1] + resolution[1], vertex[2]])
-                vertices_vertical.append([vertex[0], vertex[1] + resolution[1], boden])
+                vertices_vertical.append([vertex[0], vertex[1] + resolution[1], ground])
 
-            # Seite rechts
+            # right side
             if position[0] == len(heightfield[0]) - 1 or heightfield[position[1]][position[0]] > \
                     heightfield[position[1]][position[0] + 1]:
-                vertices_vertical.append([vertex[0] + resolution[0], vertex[1], boden])
+                vertices_vertical.append([vertex[0] + resolution[0], vertex[1], ground])
                 vertices_vertical.append([vertex[0] + resolution[0], vertex[1], vertex[2]])
                 vertices_vertical.append([vertex[0] + resolution[0], vertex[1] + resolution[1], vertex[2]])
 
-                vertices_vertical.append([vertex[0] + resolution[0], vertex[1] + resolution[1], boden])
+                vertices_vertical.append([vertex[0] + resolution[0], vertex[1] + resolution[1], ground])
                 vertices_vertical.append([vertex[0] + resolution[0], vertex[1] + resolution[1], vertex[2]])
-                vertices_vertical.append([vertex[0] + resolution[0], vertex[1], boden])
+                vertices_vertical.append([vertex[0] + resolution[0], vertex[1], ground])
 
-            # Seite hinten
+            # back
             if position[1] == len(heightfield) - 1 or \
                     heightfield[position[1]][position[0]] > \
                     heightfield[position[1] + 1][position[0]]:
-                vertices_vertical.append([vertex[0], vertex[1] + resolution[1], boden])
+                vertices_vertical.append([vertex[0], vertex[1] + resolution[1], ground])
                 vertices_vertical.append([vertex[0] + resolution[0], vertex[1] + resolution[1], vertex[2]])
                 vertices_vertical.append([vertex[0], vertex[1] + resolution[1], vertex[2]])
 
-                vertices_vertical.append([vertex[0], vertex[1] + resolution[1], boden])
+                vertices_vertical.append([vertex[0], vertex[1] + resolution[1], ground])
                 vertices_vertical.append([vertex[0] + resolution[0], vertex[1] + resolution[1], vertex[2]])
-                vertices_vertical.append([vertex[0] + resolution[0], vertex[1] + resolution[1], boden])
+                vertices_vertical.append([vertex[0] + resolution[0], vertex[1] + resolution[1], ground])
 
     return vertices_vertical
 
