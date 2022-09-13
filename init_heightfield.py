@@ -17,6 +17,7 @@ def split_nc_code_into_commands(nc_code):
     nc_commands_list = stripped_nc_code.split(" ")
     return nc_commands_list
 
+
 # @jit(nopython = True)
 def get_parameter():
     resolution = np.array([0.125, 0.125])  # 0.125, 0.125 war gut genug
@@ -80,9 +81,11 @@ def define_implicit_circle(heightfield, circle_center, radius, resolution, origi
             if x > len(heightfield[0]) - 1 or y > len(heightfield) - 1 or x < 0 or y < 0:
                 continue
             else:
-                destination = np.array(transform_point_to_coordinate(resolution, origin_work_piece, x, y, circle_center[2]))
+                destination = np.array(
+                    transform_point_to_coordinate(resolution, origin_work_piece, x, y, circle_center[2]))
                 distance_vector_from_circle_center_to_destination = destination - circle_center
-                circle_center_to_destination_distance = np.linalg.norm(distance_vector_from_circle_center_to_destination)
+                circle_center_to_destination_distance = np.linalg.norm(
+                    distance_vector_from_circle_center_to_destination)
 
                 if circle_center_to_destination_distance <= radius:
 
@@ -99,29 +102,35 @@ def process_work_piece(coordinates_file):
     plot = False
 
     layout = [[sg.Text('Welcher Zustand soll angezeigt werden?')],
-              [sg.Combo(['Anfang', 'Mitte', 'Ende'], default_value='Anfang')],
+              [sg.Combo(['Unbearbeitetes Werkstück', 'Halbfertiges Werkstück', 'Fertiges Werkstück'], default_value='Unbearbeitetes Werkstück')],
               [sg.Text('Kraftmessung ausgeben?')],
               [sg.Combo(['Ja', 'Nein'], default_value='Nein')],
               [sg.Text('Welches Material wird benutzt?')],
               [sg.Combo(['Aluminium mit < 16% Si Messing',
                          'Aluminium mit > 16% Si Bronze, Kupfer',
-                         'Automatenstahl mit geringem Kohlenstoffgehalt'], default_value='Aluminium mit < 16% Si Messing')],
+                         'Automatenstahl mit geringem Kohlenstoffgehalt'],
+                        default_value='Aluminium mit < 16% Si Messing')],
               [sg.Button('Ok'), sg.Button('Cancel')]]
 
     window = sg.Window('Window Title', layout)
+    print("Darstellung des Werkstücks: ")
     while True:
         event, values = window.read()
 
         if event in (None, 'Cancel'):  # if user closes window or clicks cancel
             break
-        if values[0] == 'Anfang':
+
+        if values[0] == 'Unbearbeitetes Werkstück':
             state = 1
+            print("Unbearbeitetes Werkstück ausgewählt")
 
-        if values[0] == 'Mitte':
+        if values[0] == 'Halbfertiges Werkstück':
             state = len(center_all) // 4
+            print("Halbfertiges Werkstück ausgewählt")
 
-        if values[0] == 'Ende':
+        if values[0] == 'Fertiges Werkstück':
             state = len(center_all)
+            print("Fertiges Werkstück ausgewählt")
 
         if values[1] == 'Ja':
             plot = True
@@ -154,6 +163,7 @@ def process_work_piece(coordinates_file):
 
     force_calculation_circle = milling_force_diagram.init_circle(diameter)
     forces = []
+    print("Initialisiere Höhenfeld")
     for current_center in center_all:
         if current_center[0] == "T":
             diameter = current_center[-2]
@@ -165,27 +175,26 @@ def process_work_piece(coordinates_file):
 
         radius = float(diameter) / 2
 
-        force = milling_force_diagram.calculate_force(current_center, force_calculation_circle, heightfield, resolution, origin_work_piece, dimension, material, mc)
+        force = milling_force_diagram.calculate_force(current_center, force_calculation_circle, heightfield, resolution,
+                                                      origin_work_piece, dimension, material, mc)
         forces.append(force)
 
         heightfield = define_implicit_circle(heightfield, current_center, radius, resolution, origin_work_piece)
 
-    print("Heightfield fertig")
+    print("Höhenfeld initialisiert")
 
-    print("Berechne Vertices")
-    vertices = calculate_Vertices(cell_count[0], cell_count[1], resolution, origin_work_piece, heightfield)
+    print("Berechne Kanten")
+    vertices = calculate_vertices(cell_count[0], cell_count[1], resolution, origin_work_piece, heightfield)
+    print("Berechnung der Kanten beendet")
 
-    print("Berechne Triangles")
+    print("Berechne Dreiecke für die Darstellung")
     vertices_triangles = [np.array(vertices_horizontal_triangle(vertices, resolution, dimension)),
                           np.array(vertices_vertical_triangle(vertices, heightfield, resolution, dimension))]
-    print("Renderer wird gestartet")
     # renderer2.pygameI(vertices_triangles)
 
     render(vertices_triangles)
     if plot:
         milling_force_diagram.plot(forces)
-
-
 
 
 @jit(nopython=True)
@@ -211,10 +220,10 @@ def calculate_vertices(point_width, point_depth, resolution, origin_work_piece, 
         for y in range(int(point_depth)):
             coordinate_vector = transform_point_to_coordinate(resolution, origin_work_piece, x, y, origin_work_piece[2])
             vertices_ground.append(coordinate_vector)
-            vertices_ceiling.append([coordinate_vector[0], coordinate_vector[1], heightfield[y][x] + origin_work_piece[2]])
+            vertices_ceiling.append(
+                [coordinate_vector[0], coordinate_vector[1], heightfield[y][x] + origin_work_piece[2]])
 
     return [np.array(vertices_ground), np.array(vertices_ceiling)]
-
 
 
 # @jit(nopython = True)
@@ -230,7 +239,8 @@ def vertices_vertical_triangle(vertices, heightfield, resolution, dimension):
 
         else:
             # front
-            position = transform_coordinates_to_point(resolution, origin_work_piece, x_coordinate=vertex[0], y_coordinate=vertex[1])
+            position = transform_coordinates_to_point(resolution, origin_work_piece, x_coordinate=vertex[0],
+                                                      y_coordinate=vertex[1])
 
             if position[1] == 0 or heightfield[position[1]][position[0]] > heightfield[position[1] - 1][position[0]]:
                 vertices_vertical.append([vertex[0], vertex[1], ground])

@@ -1,5 +1,5 @@
 import numpy as np
-import kreis
+import circle
 import csv
 from enum import Enum
 
@@ -139,7 +139,7 @@ def calculate_circle_movement(nc_command_line, start_point, circle_center, f_z):
 
     destination = create_np_array(start_point, x, y, z)
 
-    return kreis.calculate_circle_points(start_point, destination, circle_center, counter_clockwise_movement, f_z)
+    return circle.calculate_circle_points(start_point, destination, circle_center, counter_clockwise_movement, f_z)
 
 
 def create_np_array(start_point, x, y, z):

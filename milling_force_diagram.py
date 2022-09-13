@@ -2,6 +2,9 @@ from numba import jit
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
+import warnings
+warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
 
 def plot(forces):
@@ -49,7 +52,8 @@ def transform_coordinates_to_point(res, origin, x_coordinate, y_coordinate):
 
 @jit(nopython=True)
 def calculate_force(center, circles, heightfield, resolution, origin_work_piece, dimension, material_factor, mc):
-    resolution = 0.1  # distance between circle points
+
+    point_distance = 0.1  # distance between circle points
     max_force = 0
     for x in range(len(circles[0])):
         if circles[-1][x][0] + center[0] > origin_work_piece[0] and circles[-1][x][0] + center[0] < origin_work_piece[0] + dimension[
@@ -85,7 +89,7 @@ def calculate_force(center, circles, heightfield, resolution, origin_work_piece,
                             break
 
                     cutting_width = heightfield[int(intersection[1])][int(intersection[0])] - dimension[2] - height
-                    force = material_factor * math.pow((resolution * depth), (1 - mc)) * cutting_width
+                    force = material_factor * math.pow((point_distance * depth), (1 - mc)) * cutting_width
                     if force > max_force:
                         max_force = force
     return max_force
