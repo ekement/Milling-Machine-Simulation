@@ -69,7 +69,7 @@ def calculate_linear_movement_coordinates(nc_code_list, start_position, rpm, too
 
     destination = np.array([float(x), float(y), float(z)])
     coordinates_of_path = []
-    #f_z = feed per tooth
+    # f_z = feed per tooth
     f_z = 1
 
     if use_max_velocity and rpm != 0:
@@ -115,7 +115,7 @@ def calculate_circle_center(nc_command_line, start_point):
         if command.find("Z") == 0:
             z = command.strip("Z")
 
-    circle_center = create_np_array(start_point,x,y,z)
+    circle_center = create_np_array(start_point, x, y, z)
 
     return circle_center
 
@@ -153,7 +153,6 @@ def create_np_array(start_point, x, y, z):
     return np.array([float(x), float(y), float(z)])
 
 
-
 # diese Methode list die Eigenschaften des Werkstücks ein und initialiesiert Koodinaten des Nullpunktes vom Werkstück
 def init_work_piece(nc_command_list):
     global RELATIVE_ORIGIN
@@ -183,7 +182,7 @@ class MovementCommands(Enum):
 
 
 def calculate_coordinates(nc_code_file, coordinates_file):
-    #origin = np.array([0, 0, 100])
+    # origin = np.array([0, 0, 100])
     velocity = 0
     rpm = 0
     tool_blade_count = 2
@@ -200,7 +199,8 @@ def calculate_coordinates(nc_code_file, coordinates_file):
             init_work_piece(command_line)
 
         if command_line[1] == MovementCommands.LINE.value:
-            movement = calculate_linear_movement_coordinates(command_line, start_position, rpm, tool_blade_count, velocity)
+            movement = calculate_linear_movement_coordinates(command_line, start_position, rpm, tool_blade_count,
+                                                             velocity)
             path_coordinates = movement[0]
             append_multiple_coordinates_to_file(coordinates_file, path_coordinates)
             start_position = movement[1]

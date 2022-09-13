@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
 import warnings
+
 warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
 
@@ -52,13 +53,14 @@ def transform_coordinates_to_point(res, origin, x_coordinate, y_coordinate):
 
 @jit(nopython=True)
 def calculate_force(center, circles, heightfield, resolution, origin_work_piece, dimension, material_factor, mc):
-
     point_distance = 0.1  # distance between circle points
     max_force = 0
     for x in range(len(circles[0])):
-        if circles[-1][x][0] + center[0] > origin_work_piece[0] and circles[-1][x][0] + center[0] < origin_work_piece[0] + dimension[
+        if circles[-1][x][0] + center[0] > origin_work_piece[0] and circles[-1][x][0] + center[0] < origin_work_piece[
+            0] + dimension[
             0]:  # ist x koo. vom punkt auf kreis im höhenfeld
-            if circles[-1][x][1] + center[1] > origin_work_piece[1] and circles[-1][x][1] + center[1] < origin_work_piece[1] + dimension[
+            if circles[-1][x][1] + center[1] > origin_work_piece[1] and circles[-1][x][1] + center[1] < \
+                    origin_work_piece[1] + dimension[
                 1]:  # ist y koo. vom punkt auf kreis im höhenfeld
                 intersection = transform_coordinates_to_point(resolution, origin_work_piece, circles[-1][x][0],
                                                               circles[-1][x][1])
@@ -70,11 +72,14 @@ def calculate_force(center, circles, heightfield, resolution, origin_work_piece,
                     depth = 0
                     for y in range(
                             len(circles) - 1):  # gehe auf punkte von kleineren Kreisen mit gleichen winkel rein
-                        if circles[-y][x][0] + center[0] > origin_work_piece[0] and circles[-y][x][0] + center[0] < origin_work_piece[0] + \
+                        if circles[-y][x][0] + center[0] > origin_work_piece[0] and circles[-y][x][0] + center[0] < \
+                                origin_work_piece[0] + \
                                 dimension[0]:  # same shit x
-                            if circles[-y][x][1] + center[1] > origin_work_piece[1] and circles[-y][x][1] + center[1] < origin_work_piece[
-                                1] + dimension[1]:  # same shit y
-                                intersection = transform_coordinates_to_point(resolution, origin_work_piece, circles[-1][x][0],
+                            if circles[-y][x][1] + center[1] > origin_work_piece[1] and circles[-y][x][1] + center[1] < \
+                                    origin_work_piece[
+                                        1] + dimension[1]:  # same shit y
+                                intersection = transform_coordinates_to_point(resolution, origin_work_piece,
+                                                                              circles[-1][x][0],
                                                                               circles[-1][x][1])
 
                                 height = float(center[2])

@@ -1,6 +1,5 @@
 import init_heightfield
 import path_calculation
-import milling_force_diagram
 
 
 def main():
@@ -14,6 +13,6 @@ def main():
     init_heightfield.process_work_piece(coordinates_file)
     print("Darstellung beendet")
 
+
 if __name__ == '__main__':
     main()
-
